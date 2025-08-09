@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dotnet-todo
+spec:
+  replicas: {{ .Values.replicas }}
+  selector:
+    matchLabels:
+      app: dotnet-todo
+  template:
+    metadata:
+      labels:
+        app: dotnet-todo
+    spec:
+      containers:
+      - name: app
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        ports:
+        - containerPort: {{ .Values.service.targetPort }}

@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: dotnet-todo
+spec:
+  type: NodePort
+  selector:
+    app: dotnet-todo
+  ports:
+  - port: {{ .Values.service.port }}
+    targetPort: {{ .Values.service.targetPort }}
+    nodePort: 30001
