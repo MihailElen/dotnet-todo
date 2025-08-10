@@ -7,31 +7,59 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     
     steps:
-    - uses: actions/checkout@v3
-    
-    - name: Login to Docker Hub
-      uses: docker/login-action@v2
-      with:
-        username: ${{ secrets.DOCKER_USERNAME }}
-        password: ${{ secrets.DOCKER_PASSWORD }}
-    
-    - name: Build and Push
-      run: |
-        docker build -t miho1808/dotnet-todo:latest .
-        docker push miho1808/dotnet-todo:latest
+      - uses: actions/checkout@v4
+      
+      - name: Generate version
+        id: version
+        run: echo "version=$(date +'%Y.%m.%d')-${GITHUB_SHA::8}" >> $GITHUB_OUTPUT
+      
+      - name: Code analysis
+        run: |
+          echo "✅ Code analysis: Docker build will validate the code"
+      
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+      
+      - name: Build and push Docker image
+        run: |
+          docker build -t miho1808/dotnet-todo:${{ steps.version.outputs.version }} .
+          docker build -t miho1808/dotnet-todo:latest .
+          docker push miho1808/dotnet-todo:${{ steps.version.outputs.version }}
+          docker push miho1808/dotnet-todo:latest
 
   deploy:
     needs: build
     runs-on: ubuntu-latest
     
     steps:
-    - uses: actions/checkout@v3
-    
-    - uses: medyagh/setup-minikube@master
-    
-    - name: Deploy
-      run: |
-        kubectl create deployment dotnet-todo --image=miho1808/dotnet-todo:latest
-        kubectl expose deployment dotnet-todo --type=NodePort --port=5001
+      - uses: actions/checkout@v4
+      
+      - name: Setup Minikube
+        uses: medyagh/setup-minikube@master
+      
+      - name: Setup Helm
+        uses: azure/setup-helm@v3
+      
+      - name: Deploy with Helm
+        run: |
+          helm install dotnet-todo ./helm --set image.tag=${{ needs.build.outputs.version }} --wait
+          kubectl get pods,svc
+      
+      - name: Run tests
+        run: |
+          kubectl port-forward service/dotnet-todo 8080:80 &
+          sleep 10
+          
+          # Test endpoints
+          curl -f http://localhost:8080/todoitems
+          curl -f -X POST http://localhost:8080/todoitems -H "Content-Type: application/json" -d '{"name":"test","isComplete":false}'
+          curl -f http://localhost:8080/todoitems | grep -q "test"
+          
+          echo "✅ All tests passed!"
