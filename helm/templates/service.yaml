@@ -3,10 +3,14 @@ kind: Service
 metadata:
   name: dotnet-todo
 spec:
-  type: NodePort
+  type: {{ .Values.service.type | default "NodePort" }}
   selector:
     app: dotnet-todo
   ports:
-  - port: {{ .Values.service.port }}
-    targetPort: {{ .Values.service.targetPort }}
-    nodePort: 30001
+    - name: http
+      port: {{ .Values.service.port }}
+      targetPort: http
+      protocol: TCP
+      {{- if eq (.Values.service.type | default "NodePort") "NodePort" }}
+      nodePort: 30001
+      {{- end }}

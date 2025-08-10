@@ -1,9 +1,19 @@
 image:
   repository: miho1808/dotnet-todo
   tag: latest
+  pullPolicy: IfNotPresent
 
 service:
+  type: NodePort
   port: 80
   targetPort: 5001
 
 replicas: 1
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
