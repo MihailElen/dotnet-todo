@@ -11,7 +11,6 @@ provider "aws" {
   region = var.aws_region
 }
 
-# VPC for Lambda
 resource "aws_vpc" "main" {
   cidr_block           = "10.0.0.0/16"
   enable_dns_hostnames = true
@@ -22,7 +21,6 @@ resource "aws_vpc" "main" {
   }
 }
 
-# Private subnet for Lambda
 resource "aws_subnet" "private" {
   vpc_id            = aws_vpc.main.id
   cidr_block        = "10.0.1.0/24"
@@ -33,7 +31,6 @@ resource "aws_subnet" "private" {
   }
 }
 
-# Internet Gateway
 resource "aws_internet_gateway" "main" {
   vpc_id = aws_vpc.main.id
   
@@ -42,7 +39,6 @@ resource "aws_internet_gateway" "main" {
   }
 }
 
-# Public subnet for NAT
 resource "aws_subnet" "public" {
   vpc_id                  = aws_vpc.main.id
   cidr_block              = "10.0.2.0/24"
@@ -54,7 +50,6 @@ resource "aws_subnet" "public" {
   }
 }
 
-# NAT Gateway for Lambda internet access
 resource "aws_eip" "nat" {
   domain = "vpc"
 }
@@ -65,7 +60,6 @@ resource "aws_nat_gateway" "main" {
   depends_on    = [aws_internet_gateway.main]
 }
 
-# Route tables
 resource "aws_route_table" "public" {
   vpc_id = aws_vpc.main.id
   
@@ -94,7 +88,6 @@ resource "aws_route_table_association" "private" {
   route_table_id = aws_route_table.private.id
 }
 
-# Security group for Lambda
 resource "aws_security_group" "lambda" {
   name_prefix = "dotnet-todo-lambda-"
   vpc_id      = aws_vpc.main.id
@@ -107,7 +100,6 @@ resource "aws_security_group" "lambda" {
   }
 }
 
-# IAM role for Lambda
 resource "aws_iam_role" "lambda_role" {
   name = "dotnet-todo-lambda-role"
   
@@ -130,7 +122,6 @@ resource "aws_iam_role_policy_attachment" "lambda_vpc_policy" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
 }
 
-# ECR repository
 resource "aws_ecr_repository" "dotnet_todo" {
   name                 = "dotnet-todo"
   image_tag_mutability = "MUTABLE"
@@ -152,7 +143,6 @@ resource "aws_lambda_function" "dotnet_todo" {
   memory_size = 512
 }
 
-# API Gateway
 resource "aws_apigatewayv2_api" "main" {
   name          = "dotnet-todo-api"
   protocol_type = "HTTP"
@@ -184,19 +174,16 @@ resource "aws_lambda_permission" "apigw" {
   source_arn    = "${aws_apigatewayv2_api.main.execution_arn}/*/*"
 }
 
-# Data sources
 data "aws_availability_zones" "available" {
   state = "available"
 }
 
-# Variables
 variable "aws_region" {
   description = "AWS region"
   type        = string
   default     = "us-east-1"
 }
 
-# Outputs
 output "api_gateway_url" {
   description = "API Gateway URL"
   value       = aws_apigatewayv2_stage.main.invoke_url
